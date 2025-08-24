@@ -1,3 +1,8 @@
+import os
+os.environ["GRPC_VERBOSITY"] = "ERROR"
+os.environ["GRPC_CPP_VERBOSITY"] = "ERROR"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Si usas TensorFlow en algún lado
+
 import queue
 import signal
 import sys
@@ -5,7 +10,7 @@ import threading
 import time
 
 from stt.google_stt import GoogleSTT
-from tts.google_tts import GoogleTTS
+from tts.eleven_tts import ElevenLabsTTS
 from npl.dialog_manager import DialogManager
 from npl.pronunciation import PronunciationEvaluator
 from utils.audio_utils import AudioUtils
@@ -24,7 +29,7 @@ CHUNK = int(RATE / 10)  # 100ms
 # =========================
 audio_utils = AudioUtils(rate=RATE, chunk=CHUNK)
 stt = GoogleSTT(rate=RATE)
-tts = GoogleTTS()
+tts = ElevenLabsTTS()
 dialog_manager = DialogManager()
 pronunciation_eval = PronunciationEvaluator()
 #firebase = FirebaseService()
