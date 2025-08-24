@@ -2,7 +2,7 @@ import openai
 from config import OPENAI_API_KEY
 
 class DialogManager:
-    def __init__(self, model="gpt-4o", language="en"):
+    def __init__(self, model="gpt-4o-mini", language="en"):
         """
         model: Modelo de OpenAI a utilizar (gpt-4o, gpt-4o-mini, gpt-5, etc.)
         language: Idioma principal de la conversación
