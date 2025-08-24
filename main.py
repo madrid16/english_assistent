@@ -3,18 +3,15 @@ os.environ["GRPC_VERBOSITY"] = "ERROR"
 os.environ["GRPC_CPP_VERBOSITY"] = "ERROR"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Si usas TensorFlow en algún lado
 
-import queue
 import signal
 import sys
-import threading
-import time
 
 from stt.google_stt import GoogleSTT
 from tts.eleven_tts import ElevenLabsTTS
 from npl.dialog_manager import DialogManager
 from npl.pronunciation import PronunciationEvaluator
 from utils.audio_utils import AudioUtils
-#from firebase_service import FirebaseService
+from db.firebase_service import FirebaseService
 
 # =========================
 # CONFIGURACIÓN GLOBAL
@@ -32,10 +29,7 @@ stt = GoogleSTT(rate=RATE)
 tts = ElevenLabsTTS()
 dialog_manager = DialogManager()
 pronunciation_eval = PronunciationEvaluator()
-#firebase = FirebaseService()
-
-# Cola para manejar audio entrante en tiempo real
-audio_queue = queue.Queue()
+firebase = FirebaseService()
 is_running = True
 pending_target = None  # frase que el usuario debe practicar
 
@@ -48,11 +42,6 @@ def process_audio_stream(user_id="usuario_demo"):
     procesa la respuesta con GPT, evalúa pronunciación,
     da feedback y guarda todo en Firebase.
     """
-
-    def on_transcription_update(text):
-        """Callback para transcripciones parciales."""
-        if text:
-            print(f"(Escuchando...) {text}", end="\r")
 
     def on_final_transcription(text):
         """Callback cuando se detecta una frase completa."""
@@ -78,13 +67,13 @@ def process_audio_stream(user_id="usuario_demo"):
             respuesta, frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
 
         # 3. Guardar en Firebase
-        #firebase.guardar_progreso(
-        #    usuario_id=user_id,
-        #    texto_usuario=user_input,
-        #    respuesta_asistente=respuesta,
-        #    frases_objetivo=frase_objetivo,
-        #    feedback=feedback
-        #)
+        firebase.save_user_progress(
+            usuario_id=user_id,
+            texto_usuario=user_input,
+            respuesta_asistente=respuesta,
+            frases_objetivo=frase_objetivo,
+            feedback=feedback
+        )
 
         # 4. Reproducir respuesta por TTS
         tts.speak(respuesta)
