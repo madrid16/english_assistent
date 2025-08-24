@@ -37,6 +37,7 @@ pronunciation_eval = PronunciationEvaluator()
 # Cola para manejar audio entrante en tiempo real
 audio_queue = queue.Queue()
 is_running = True
+pending_target = None  # frase que el usuario debe practicar
 
 # =========================
 # PROCESAMIENTO DE AUDIO EN TIEMPO REAL
@@ -55,22 +56,26 @@ def process_audio_stream(user_id="usuario_demo"):
 
     def on_final_transcription(text):
         """Callback cuando se detecta una frase completa."""
+        global pending_target
         user_input = text.strip()
         print(f"\n👤 Usuario: {user_input}")
 
         if user_input.lower() == "salir":
             global is_running
             is_running = False
+            stt.stop_streaming()
             return
-
-        # 1. Respuesta del diálogo con GPT
-        respuesta, frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
-
-        # 2. Evaluación de pronunciación (comparando con la frase objetivo)
-        feedback = pronunciation_eval.evaluate(user_input, frase_objetivo)
-        print(f"🤖 Asistente: {respuesta}")
-        print(f"🎯 Frase objetivo: {frase_objetivo}")
-        print(f"📊 Feedback pronunciación: {feedback}")
+        
+        if pending_target:
+            # 2. Evaluación de pronunciación (comparando con la frase objetivo)
+            # 🔹 Ahora sí: evaluar pronunciación contra la frase pendiente
+            feedback = pronunciation_eval.evaluate(user_input, pending_target)
+            print(f"📊 Feedback pronunciación: {feedback}")
+            pending_target = None  # limpiar después de evaluar
+        else:
+            # 1. Respuesta del diálogo con GPT
+            # 🔹 Nuevo turno: generar respuesta de GPT
+            respuesta, frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
 
         # 3. Guardar en Firebase
         #firebase.guardar_progreso(
@@ -83,20 +88,20 @@ def process_audio_stream(user_id="usuario_demo"):
 
         # 4. Reproducir respuesta por TTS
         tts.speak(respuesta)
-        print(f"🤖 Asistente: {respuesta}")
+        # Guardamos la frase objetivo para el próximo turno
+        pending_target = frase_objetivo
 
     # 🔹 Inicia STT con callbacks
     print("🎙️ Asistente escuchando. Di 'salir' para terminar.")
     try:
         stt.audio_utils.start_recording()
         stt.start_streaming(
-            on_update=on_transcription_update,
+            on_update=lambda x: print(f"⏳ {x}", end="\r"),
             on_final=on_final_transcription,
             single_utterance=False,  # mantiene una sesión continua
         )
     finally:
         stt.stop_streaming()
-
 
 # =========================
 # MANEJO DE CTRL+C
