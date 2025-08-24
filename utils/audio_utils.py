@@ -1,9 +1,10 @@
-import pyaudio
-import wave
 import numpy as np
+import queue
+import sounddevice as sd
+import wave
 
 class AudioUtils:
-    def __init__(self, rate=16000, chunk=1024, channels=1, format=pyaudio.paInt16):
+    def __init__(self, rate=16000, chunk=1024, channels=1):
         """
         rate: Frecuencia de muestreo (16000 recomendado para STT)
         chunk: Tamaño del buffer de audio en frames
@@ -13,56 +14,59 @@ class AudioUtils:
         self.rate = rate
         self.chunk = chunk
         self.channels = channels
-        self.format = format
-        self.audio_interface = pyaudio.PyAudio()
+        self.q = queue.Queue()
 
-    def start_stream(self, input_device_index=None, callback=None):
-        """
-        Inicia un stream de audio desde el micrófono.
-        callback: función que procesa los frames de audio en tiempo real.
-        """
-        return self.audio_interface.open(
-            format=self.format,
+    def _callback(self, indata, frames, time, status):
+        """Callback de sounddevice que guarda el audio en la cola"""
+        if status:
+            print(f"⚠️ Status de audio: {status}")
+        self.q.put(indata.copy())
+
+    def start_recording(self):
+        """Inicia grabación en segundo plano con callback"""
+        self.stream = sd.InputStream(
+            samplerate=self.rate,
             channels=self.channels,
-            rate=self.rate,
-            input=True,
-            frames_per_buffer=self.chunk,
-            input_device_index=input_device_index,
-            stream_callback=callback
+            dtype="int16",
+            blocksize=self.chunk,
+            callback=self._callback
         )
+        self.stream.start()
+        print("🎙️ Grabación iniciada...")
 
-    def stop_stream(self, stream):
-        """
-        Detiene y cierra el stream de audio.
-        """
-        if stream.is_active():
-            stream.stop_stream()
-        stream.close()
+    def stop_recording(self):
+        """Detiene la grabación"""
+        if hasattr(self, "stream"):
+            self.stream.stop()
+            self.stream.close()
+            print("🛑 Grabación detenida")
 
-    def save_wav(self, filename, audio_frames):
-        """
-        Guarda audio capturado en formato WAV.
-        """
-        with wave.open(filename, 'wb') as wf:
+    def get_audio_chunk(self):
+        """Obtiene el siguiente bloque de audio desde la cola"""
+        try:
+            data = self.q.get(timeout=1)
+            return data.flatten()  # numpy array
+        except queue.Empty:
+            return None
+
+    def record_seconds(self, seconds=3):
+        """Graba un audio corto y lo devuelve como array numpy"""
+        print(f"🎤 Grabando {seconds} segundos...")
+        recording = sd.rec(int(seconds * self.rate), samplerate=self.rate,
+                           channels=self.channels, dtype="int16")
+        sd.wait()
+        return recording.flatten()
+
+    def save_wav(self, filename, audio_data):
+        """Guarda un numpy array en archivo WAV"""
+        with wave.open(filename, "wb") as wf:
             wf.setnchannels(self.channels)
-            wf.setsampwidth(self.audio_interface.get_sample_size(self.format))
+            wf.setsampwidth(2)  # 16-bit PCM
             wf.setframerate(self.rate)
-            wf.writeframes(b''.join(audio_frames))
+            wf.writeframes(audio_data.tobytes())
+        print(f"💾 Audio guardado en {filename}")
 
-    def pcm_to_numpy(self, pcm_data):
-        """
-        Convierte datos PCM a array NumPy.
-        """
-        return np.frombuffer(pcm_data, dtype=np.int16)
-
-    def numpy_to_pcm(self, numpy_array):
-        """
-        Convierte un array NumPy a bytes PCM.
-        """
-        return numpy_array.astype(np.int16).tobytes()
-
-    def terminate(self):
-        """
-        Libera recursos de PyAudio.
-        """
-        self.audio_interface.terminate()
+    def detect_silence(self, audio_chunk, threshold=500):
+        """Detecta si un bloque es silencio según RMS"""
+        rms = np.sqrt(np.mean(np.square(audio_chunk.astype(np.float32))))
+        return rms < threshold

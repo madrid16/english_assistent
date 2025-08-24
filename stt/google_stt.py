@@ -1,71 +1,66 @@
-import pyaudio
+import numpy as np
 import queue
-import time
 from google.cloud import speech
+from utils.audio_utils import AudioUtils
 
 class GoogleSTT:
-    def __init__(self, silence_seconds=3, rate=16000, chunk=1024):
+    def __init__(self, rate=16000, chunk=1024, channels=1, language_code="en-ES"):
         """
         silence_seconds: tiempo máximo de silencio antes de cortar la grabación
         rate: frecuencia de muestreo (Hz)
         chunk: tamaño del buffer de audio
         """
-        self.silence_seconds = silence_seconds
+        self.language_code = language_code
         self.rate = rate
         self.chunk = chunk
+        self.channels = channels
 
+        # Cliente de Google STT
         self.client = speech.SpeechClient()
-        self.audio_interface = pyaudio.PyAudio()
-        self.audio_queue = queue.Queue()
-        self.listening = False
 
-    def _audio_callback(self, in_data, frame_count, time_info, status_flags):
-        """Callback de PyAudio que envía audio al queue."""
-        self.audio_queue.put(in_data)
-        return None, pyaudio.paContinue
+        # Utilidad de audio (sounddevice)
+        self.audio_utils = AudioUtils(rate=rate, chunk=chunk, channels=channels)
 
-    def _stream_generator(self):
-        """Generador que envía datos al API de Google."""
-        while self.listening:
-            data = self.audio_queue.get()
-            if data is None:
-                return
-            yield speech.StreamingRecognizeRequest(audio_content=data)
+        # Cola de audio para enviar a Google
+        self.requests = queue.Queue()
 
-    def listen_and_transcribe(self, language_code="en-US"):
+    def _generator(self):
+        """Generador que envía audio a la API de Google"""
+        while True:
+            chunk = self.audio_utils.get_audio_chunk()
+            if chunk is None:
+                continue
+
+            # Asegurar tipo bytes (Google espera PCM lineal 16-bit)
+            audio_content = chunk.astype(np.int16).tobytes()
+            yield speech.StreamingRecognizeRequest(audio_content=audio_content)
+
+    def listen_and_transcribe(self, on_transcription_update=None):
         """
-        Captura audio en tiempo real, detecta silencio y retorna la transcripción final.
+        Captura audio en streaming y transcribe con Google STT.
+        on_transcription_update: callback para texto parcial/final.
         """
+        # Configuración de reconocimiento
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
             sample_rate_hertz=self.rate,
-            language_code=language_code,
-            enable_automatic_punctuation=True
+            language_code=self.language_code,
+            enable_automatic_punctuation=True,
         )
 
         streaming_config = speech.StreamingRecognitionConfig(
             config=config,
-            interim_results=True  # Permite recibir resultados parciales
+            interim_results=True
         )
 
-        # Inicia captura de audio
-        self.listening = True
-        stream = self.audio_interface.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=self.rate,
-            input=True,
-            frames_per_buffer=self.chunk,
-            stream_callback=self._audio_callback
+        # Iniciar captura de audio
+        self.audio_utils.start_recording()
+
+        # Llamada en streaming a Google
+        responses = self.client.streaming_recognize(
+            config=streaming_config,
+            requests=self._generator()
         )
-
-        requests = self._stream_generator()
-        responses = self.client.streaming_recognize(streaming_config, requests)
-
-        print("🎙️ Habla ahora (di 'salir' para terminar)...")
-
-        final_text = ""
-        last_speech_time = time.time()
 
         try:
             for response in responses:
@@ -73,29 +68,17 @@ class GoogleSTT:
                     continue
 
                 result = response.results[0]
-                transcript = result.alternatives[0].transcript.strip()
+                transcript = result.alternatives[0].transcript
+
+                if on_transcription_update:
+                    on_transcription_update(transcript, result.is_final)
 
                 if result.is_final:
-                    print(f"📝 Final: {transcript}")
-                    final_text += " " + transcript
-                    last_speech_time = time.time()
+                    print(f"✅ Final: {transcript}")
                 else:
-                    print(f"... {transcript}", end="\r")
-                    last_speech_time = time.time()
+                    print(f"⏳ Parcial: {transcript}")
 
-                # Detecta silencio prolongado
-                if time.time() - last_speech_time > self.silence_seconds:
-                    print("\n⏹️ Silencio detectado, finalizando...")
-                    break
-
+        except Exception as e:
+            print(f"❌ Error en STT: {e}")
         finally:
-            self.listening = False
-            self.audio_queue.put(None)
-            stream.stop_stream()
-            stream.close()
-
-        return final_text.strip()
-
-    def close(self):
-        """Cierra la interfaz de audio."""
-        self.audio_interface.terminate()
+            self.audio_utils.stop_recording()

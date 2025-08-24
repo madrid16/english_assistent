@@ -1,4 +1,3 @@
-import pyaudio
 import queue
 import signal
 import sys
@@ -17,6 +16,8 @@ from utils.audio_utils import AudioUtils
 # =========================
 RATE = 16000
 CHUNK = 1024
+CHANNELS = 1
+CHUNK = int(RATE / 10)  # 100ms
 
 # =========================
 # INSTANCIAS DE MÓDULOS
@@ -48,7 +49,7 @@ def process_audio_stream(user_id="usuario_demo"):
     procesa la respuesta con GPT, evalúa pronunciación,
     da feedback y guarda todo en Firebase.
     """
-    stt.start_streaming()
+    stt.listen_and_transcribe()
 
     print("🎙️ Asistente iniciado. Habla en cualquier momento (di 'salir' para terminar).")
 
@@ -108,7 +109,7 @@ def main():
     global is_running
 
     # Iniciar captura de audio
-    stream = audio_utils.start_stream(callback=audio_callback)
+    stream = audio_utils.start_recording()
     print("Micrófono encendido. Presiona Ctrl+C para salir.")
 
     try:
