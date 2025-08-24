@@ -1,0 +1,11 @@
+openai 
+google-cloud-speech 
+elevenlabs 
+sounddevice 
+scipy
+numpy
+playsound
+google-cloud-firestore
+pyaudio
+google-cloud-texttospeech
+python-dotenv

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.env
+venv/
+.venv/
+
+# Credenciales
+*.json
+secrets/
+config.pyc
+
+# Archivos temporales
+*.wav
+*.mp3
+temp_*
