@@ -34,13 +34,6 @@ audio_queue = queue.Queue()
 is_running = True
 
 # =========================
-# CALLBACK DEL MICRÓFONO
-# =========================
-def audio_callback(in_data, frame_count, time_info, status):
-    audio_queue.put(in_data)
-    return (None, pyaudio.paContinue)
-
-# =========================
 # PROCESAMIENTO DE AUDIO EN TIEMPO REAL
 # =========================
 def process_audio_stream(user_id="usuario_demo"):
@@ -49,46 +42,56 @@ def process_audio_stream(user_id="usuario_demo"):
     procesa la respuesta con GPT, evalúa pronunciación,
     da feedback y guarda todo en Firebase.
     """
-    stt.listen_and_transcribe()
 
-    print("🎙️ Asistente iniciado. Habla en cualquier momento (di 'salir' para terminar).")
+    def on_transcription_update(text):
+        """Callback para transcripciones parciales."""
+        if text:
+            print(f"(Escuchando...) {text}", end="\r")
 
-    while is_running:
-        if not audio_queue.empty():
-            pcm_data = audio_queue.get()
-            text_partial, is_final = stt.process_streaming(pcm_data)
+    def on_final_transcription(text):
+        """Callback cuando se detecta una frase completa."""
+        user_input = text.strip()
+        print(f"\n👤 Usuario: {user_input}")
 
-            if text_partial:
-                print(f"(Escuchando...) {text_partial}", end="\r")
+        if user_input.lower() == "salir":
+            global is_running
+            is_running = False
+            return
 
-            if is_final:
-                user_input = text_partial.strip()
-                print(f"\n👤 Usuario: {user_input}")
+        # 1. Respuesta del diálogo con GPT
+        respuesta, frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
 
-                if user_input.lower() == "salir":
-                    break
+        # 2. Evaluación de pronunciación (comparando con la frase objetivo)
+        feedback = pronunciation_eval.evaluate(user_input, frase_objetivo)
+        print(f"🤖 Asistente: {respuesta}")
+        print(f"🎯 Frase objetivo: {frase_objetivo}")
+        print(f"📊 Feedback pronunciación: {feedback}")
 
-                # 1. Respuesta del diálogo
-                respuesta, frases_objetivo = dialog_manager.get_response(user_input)
+        # 3. Guardar en Firebase
+        #firebase.guardar_progreso(
+        #    usuario_id=user_id,
+        #    texto_usuario=user_input,
+        #    respuesta_asistente=respuesta,
+        #    frases_objetivo=frase_objetivo,
+        #    feedback=feedback
+        #)
 
-                # 2. Evaluación de pronunciación (en vivo sobre la frase objetivo)
-                feedback = pronunciation_eval.evaluate(user_input, frases_objetivo)
-                print(f"🤖 Asistente: {respuesta}")
-                print(f"📊 Feedback pronunciación: {feedback}")
+        # 4. Reproducir respuesta por TTS
+        tts.speak(respuesta)
+        print(f"🤖 Asistente: {respuesta}")
 
-                # 3. Guardar en Firebase
-                #firebase.guardar_progreso(
-                #    usuario_id=user_id,
-                #    texto_usuario=user_input,
-                #    respuesta_asistente=respuesta,
-                #    frases_objetivo=frases_objetivo,
-                #    feedback=feedback
-                #)
+    # 🔹 Inicia STT con callbacks
+    print("🎙️ Asistente escuchando. Di 'salir' para terminar.")
+    try:
+        stt.audio_utils.start_recording()
+        stt.start_streaming(
+            on_update=on_transcription_update,
+            on_final=on_final_transcription,
+            single_utterance=False,  # mantiene una sesión continua
+        )
+    finally:
+        stt.stop_streaming()
 
-                # 4. Reproducir respuesta por TTS
-                tts.speak(respuesta)
-
-    stt.stop_streaming()
 
 # =========================
 # MANEJO DE CTRL+C
@@ -107,17 +110,13 @@ signal.signal(signal.SIGINT, signal_handler)
 # =========================
 def main():
     global is_running
-
-    # Iniciar captura de audio
-    stream = audio_utils.start_recording()
     print("Micrófono encendido. Presiona Ctrl+C para salir.")
-
     try:
         process_audio_stream()
+    except KeyboardInterrupt:
+        pass
     finally:
-        stream.stop_stream()
-        stream.close()
-        audio_utils.terminate()
+        # No cierres 'stream' (no existe); 'stop_streaming()' ya se llamó
         print("Asistente detenido.")
 
 if __name__ == "__main__":

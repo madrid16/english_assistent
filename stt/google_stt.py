@@ -1,7 +1,9 @@
 import numpy as np
 import queue
 from google.cloud import speech
+import sounddevice as sd
 from utils.audio_utils import AudioUtils
+from utils.shared_queue import audio_queue  # en lugar de declararlo aquí
 
 class GoogleSTT:
     def __init__(self, rate=16000, chunk=1024, channels=1, language_code="en-ES"):
@@ -82,3 +84,55 @@ class GoogleSTT:
             print(f"❌ Error en STT: {e}")
         finally:
             self.audio_utils.stop_recording()
+
+    def start_streaming(self, on_update=None, on_final=None, single_utterance=False):
+        self._running = True
+
+        stream_config = speech.StreamingRecognitionConfig(
+            config=speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=self.rate,
+                language_code=self.language_code,
+            ),
+            interim_results=True,
+            single_utterance=single_utterance,
+        )
+
+        def request_generator():
+            while self._running:
+                try:
+                    data = audio_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
+
+                if data is None:  # señal de stop
+                    break
+
+                yield speech.StreamingRecognizeRequest(audio_content=data)
+
+        try:
+            # 👇 Aquí pasamos stream_config como primer parámetro obligatorio
+            responses = self.client.streaming_recognize(stream_config, request_generator())
+            for response in responses:
+                if not self._running:
+                    break
+                for result in response.results:
+                    if not result.alternatives:
+                        continue
+                    transcript = result.alternatives[0].transcript
+                    if result.is_final:
+                        if on_final:
+                            on_final(transcript)
+                        if single_utterance:
+                            self._running = False
+                            break
+                    else:
+                        if on_update:
+                            on_update(transcript)
+        finally:
+            self._running = False
+    
+
+    def stop_streaming(self):
+        """Detiene el bucle de start_streaming()."""
+        self._running = False

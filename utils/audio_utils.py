@@ -1,7 +1,6 @@
 import numpy as np
-import queue
 import sounddevice as sd
-import wave
+from utils.shared_queue import audio_queue  # usamos la cola global
 
 class AudioUtils:
     def __init__(self, rate=16000, chunk=1024, channels=1):
@@ -14,21 +13,23 @@ class AudioUtils:
         self.rate = rate
         self.chunk = chunk
         self.channels = channels
-        self.q = queue.Queue()
+        self.stream = None
 
     def _callback(self, indata, frames, time, status):
         """Callback de sounddevice que guarda el audio en la cola"""
         if status:
             print(f"⚠️ Status de audio: {status}")
-        self.q.put(indata.copy())
+        # Convertir a PCM16 y encolar
+        audio_data = (indata * 32767).astype(np.int16).tobytes()
+        audio_queue.put(audio_data)
 
     def start_recording(self):
         """Inicia grabación en segundo plano con callback"""
         self.stream = sd.InputStream(
-            samplerate=self.rate,
             channels=self.channels,
-            dtype="int16",
+            samplerate=self.rate,
             blocksize=self.chunk,
+            dtype="float32",
             callback=self._callback
         )
         self.stream.start()
@@ -36,9 +37,10 @@ class AudioUtils:
 
     def stop_recording(self):
         """Detiene la grabación"""
-        if hasattr(self, "stream"):
+        if self.stream:
             self.stream.stop()
             self.stream.close()
+            self.stream = None
             print("🛑 Grabación detenida")
 
     def get_audio_chunk(self):
@@ -56,15 +58,6 @@ class AudioUtils:
                            channels=self.channels, dtype="int16")
         sd.wait()
         return recording.flatten()
-
-    def save_wav(self, filename, audio_data):
-        """Guarda un numpy array en archivo WAV"""
-        with wave.open(filename, "wb") as wf:
-            wf.setnchannels(self.channels)
-            wf.setsampwidth(2)  # 16-bit PCM
-            wf.setframerate(self.rate)
-            wf.writeframes(audio_data.tobytes())
-        print(f"💾 Audio guardado en {filename}")
 
     def detect_silence(self, audio_chunk, threshold=500):
         """Detecta si un bloque es silencio según RMS"""
