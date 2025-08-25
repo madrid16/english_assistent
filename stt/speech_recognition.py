@@ -89,3 +89,12 @@ class SpeechRecognizer:
         except Exception as e:
             if self.running:
                 print(f"\n⚠️ Error en streaming STT: {e}")
+    
+    def pause(self):
+        self.running = False
+
+    def resume(self):
+        if not self.running:
+            self.running = True
+            threading.Thread(target=self._capture_audio, daemon=True).start()
+
