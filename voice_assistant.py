@@ -72,8 +72,11 @@ class VoiceAssistant:
             return
 
         # Obtiene respuesta del diálogo
-        response = self.dialog_manager.generate_response(text)
-        self.response_queue.put(response)
+        reply, frase_objetivo, es_larga = self.dialog_manager.generate_response(text)
+
+        # Guardamos frase objetivo si existe
+        self.pending_target = frase_objetivo if frase_objetivo else None
+        self.response_queue.put(reply)
 
     def _process_responses(self):
         """

@@ -24,14 +24,16 @@ class DialogManager:
 
         # Sistema prompt para GPT
         system_prompt = (
-            "Eres un asistente de inglés. Da respuestas claras y breves (máx. 40 palabras) "
+            "Eres un asistente de inglés. Da respuestas claras y breves (máx. 40 palabras). "
             "Usa vocabulario adecuado al nivel A2-B1. "
-            "Si la frase del usuario es útil para práctica, devuelve una frase objetivo en inglés. "
-            "Responde en JSON con 'reply' y opcional 'frase_objetivo'."
+            "Genera una frase objetivo en inglés solo si la frase del usuario es educativa, práctica o un ejemplo útil. "
+            "No generes frase objetivo para saludos, despedidas o frases muy cortas. "
+            "Responde siempre en JSON con 'reply' y opcional 'frase_objetivo'."
         ) if breve else (
             "Eres un asistente de inglés que da explicaciones completas con ejemplos. "
-            "Si la frase del usuario es útil para práctica, devuelve una frase objetivo en inglés. "
-            "Responde en JSON con 'reply' y opcional 'frase_objetivo'."
+            "Genera una frase objetivo en inglés solo si la frase del usuario es educativa, práctica o un ejemplo útil. "
+            "No generes frase objetivo para saludos, despedidas o frases muy cortas. "
+            "Responde siempre en JSON con 'reply' y opcional 'frase_objetivo'."
         )
 
         self.context.append({"role": "user", "content": user_input})
