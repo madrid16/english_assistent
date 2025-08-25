@@ -9,7 +9,7 @@ from npl.listening_test import ListeningTest
 
 
 class VoiceAssistant:
-    def __init__(self, language_code="en-US", vad_aggressiveness=2, keywords_expansion=False):
+    def __init__(self, language_code="en-US", keywords_expansion=False, firestore=None):
         self.language_code = language_code
         self.keywords_expansion = keywords_expansion
 
@@ -18,7 +18,7 @@ class VoiceAssistant:
         self.tts = ElevenLabsTTS()
         self.dialog_manager = DialogManager()
 
-        self.listening_test = ListeningTest(tts=self.tts, stt=self.stt)
+        self.listening_test = ListeningTest(tts=self.tts, stt=self.stt, firestore=firestore)
 
         # Control de ejecución
         self.response_queue = queue.Queue()

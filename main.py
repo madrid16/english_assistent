@@ -28,7 +28,7 @@ gpt = GPTClient()
 
 assistant = VoiceAssistant(
     language_code="es-419",
-    vad_aggressiveness=2,
+    firestore=firestore
 )
 
 # =========================
@@ -51,6 +51,7 @@ def main():
     try:
         firebase_service = FirebaseService(db_client=firestore.db, gpt_client=gpt)
         firebase_service.initialize_global_listening_phrases(num_phrases=80)
+        print(firestore.get_listening_phrases(8))
         #assistant.start()
     except Exception as e:
         print(e)

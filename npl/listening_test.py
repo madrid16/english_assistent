@@ -2,8 +2,8 @@
 import time
 import json
 import openai
+import random
 import re
-from queue import Queue, Empty
 from config import OPENAI_API_KEY
 
 
@@ -49,7 +49,7 @@ Incorrecta o vacía => 0.0.
 """
 
 class ListeningTest:
-    def __init__(self, tts, stt):
+    def __init__(self, tts, stt, firestore):
         """
         gpt_client: instancia para comunicarse con GPT
         tts: instancia para text-to-speech (Ej: ElevenLabs)
@@ -62,6 +62,7 @@ class ListeningTest:
         self.recognizer = stt
         self.last_transcript = ""
         self.result = None
+        self.firestore = firestore
 
     # -----------------------------
     # Métodos públicos
@@ -140,6 +141,12 @@ class ListeningTest:
             print("⚠️ Error al parsear JSON:", e)
         # fallback
         return raw_text, 0
+
+    def get_random_listening_phrases(self, n=8):
+        all_phrases = self.firestore.get_listening_phrases()
+        if len(all_phrases) < n:
+            raise ValueError(f"No hay suficientes frases en Firestore ({len(all_phrases)})")
+        return random.sample(all_phrases, n)
 
 
 # -----------------------------

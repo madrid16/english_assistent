@@ -1,4 +1,5 @@
 import firebase_admin
+import random
 from firebase_admin import credentials, firestore
 from config import FIREBASE_CREDENTIALS_PATH
 
@@ -61,3 +62,18 @@ class FirebaseDB:
         except Exception as e:
             print(f"❌ Error al obtener colección: {e}")
             return []
+        
+    def get_listening_phrases(self, n):
+        """Devuelve n frases aleatorias del conjunto global de listening."""
+        # Obtiene todos los documentos de listening_phrases
+        docs = self.db.collection("global_listening_phrases").stream()
+        all_phrases = []
+        for doc in docs:
+            data = doc.to_dict()
+            phrases = data.get("phrases", [])
+            all_phrases.extend(phrases)
+
+        if len(all_phrases) < n:
+            raise ValueError(f"No hay suficientes frases en Firestore ({len(all_phrases)})")
+
+        return random.sample(all_phrases, n)
