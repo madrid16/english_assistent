@@ -45,11 +45,12 @@ def main():
     print("Micrófono encendido. Presiona Ctrl+C para salir.")
     try:
         assistant.start()
+    except Exception as e:
+        print(e)
     except KeyboardInterrupt:
         pass
     finally:
-        # No cierres 'stream' (no existe); 'stop_streaming()' ya se llamó
-        print("Asistente detenido.")
+        print("Finally: Asistente detenido.")
 
 if __name__ == "__main__":
     main()

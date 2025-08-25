@@ -20,6 +20,11 @@ class VoiceAssistant:
         self.response_queue = queue.Queue()
         self.speaking = False
         self.running = False
+        self.stt.callback = self.on_user_speech
+
+        # Hilos
+        self.capture_thread = None
+        self.recognition_thread = None
 
     def start(self):
         """Inicia el asistente de voz"""
@@ -27,15 +32,22 @@ class VoiceAssistant:
         self.running = True
 
         # Hilo para procesar respuestas y hablar
-        threading.Thread(target=self._process_responses, daemon=True).start()
+        threading.Thread(target=self._process_responses).start()
 
-        # Inicia reconocimiento de voz
-        self.stt.start(callback=self.on_user_speech)
+        # Hilos para STT
+        self.capture_thread = threading.Thread(target=self.stt._capture_audio)
+        self.recognition_thread = threading.Thread(target=self.stt._streaming_recognition)
+        self.capture_thread.start()
+        self.recognition_thread.start()
 
     def stop(self):
         """Detiene el asistente"""
         self.running = False
         self.stt.stop()
+        if self.capture_thread:
+            self.capture_thread.join()
+        if self.recognition_thread:
+            self.recognition_thread.join()
         print("🛑 Asistente detenido.")
 
     def on_user_speech(self, text):
