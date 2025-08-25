@@ -5,6 +5,7 @@ import time
 from stt.speech_recognition import SpeechRecognizer
 from tts.eleven_tts import ElevenLabsTTS
 from npl.dialog_manager import DialogManager
+from npl.listening_test import ListeningTest
 
 
 class VoiceAssistant:
@@ -16,6 +17,8 @@ class VoiceAssistant:
         self.stt = SpeechRecognizer(language_code=language_code, rate=16000, chunk_duration_ms=100)
         self.tts = ElevenLabsTTS()
         self.dialog_manager = DialogManager()
+
+        self.listening_test = ListeningTest(tts=self.tts, stt=self.stt)
 
         # Control de ejecución
         self.response_queue = queue.Queue()
@@ -69,6 +72,15 @@ class VoiceAssistant:
 
         if text in ["salir", "exit", "quit"]:
             self.stop()
+            return
+        
+        if text == "start listening test" or "empezar test inicial":
+            print("Iniciando prueba de listening...")
+            evaluation = self.listening_test.start_test(
+                user_id="usuario123",
+                listening_items=mi_lista_de_items
+            )
+            print("Evaluación:", evaluation)
             return
 
         # Obtiene respuesta del diálogo

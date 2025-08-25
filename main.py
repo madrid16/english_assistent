@@ -45,6 +45,8 @@ def main():
     print("Micrófono encendido. Presiona Ctrl+C para salir.")
     try:
         assistant.start()
+        test = ListeningTest(DummyGPT(), DummyTTS(), DummyRecognizer())
+        test.start_test("The weather is nice today")
     except Exception as e:
         print(e)
     except KeyboardInterrupt:
