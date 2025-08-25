@@ -49,7 +49,7 @@ Incorrecta o vacía => 0.0.
 """
 
 class ListeningTest:
-    def __init__(self, gpt_client, tts, recognizer):
+    def __init__(self, tts, stt):
         """
         gpt_client: instancia para comunicarse con GPT
         tts: instancia para text-to-speech (Ej: ElevenLabs)
@@ -58,7 +58,8 @@ class ListeningTest:
         openai.api_key = OPENAI_API_KEY
         self.gpt = openai
         self.tts = tts
-        self.recognizer = recognizer
+        self.stt = stt
+        self.recognizer = stt
         self.last_transcript = ""
         self.result = None
 

@@ -8,6 +8,9 @@ import sys
 
 from utils.audio_utils import AudioUtils
 from voice_assistant import VoiceAssistant
+from db.firebase_db import FirebaseDB
+from db.firebase_service import FirebaseService
+from npl.gpt_client import GPTClient
 
 # =========================
 # CONFIGURACIÓN GLOBAL
@@ -20,6 +23,8 @@ CHUNK = int(RATE / 10)  # 100ms
 # INSTANCIAS DE MÓDULOS
 # =========================
 audio_utils = AudioUtils(rate=RATE, chunk=CHUNK)
+firestore = FirebaseDB()
+gpt = GPTClient()
 
 assistant = VoiceAssistant(
     language_code="es-419",
@@ -44,9 +49,9 @@ signal.signal(signal.SIGINT, signal_handler)
 def main():
     print("Micrófono encendido. Presiona Ctrl+C para salir.")
     try:
-        assistant.start()
-        test = ListeningTest(DummyGPT(), DummyTTS(), DummyRecognizer())
-        test.start_test("The weather is nice today")
+        firebase_service = FirebaseService(db_client=firestore.db, gpt_client=gpt)
+        firebase_service.initialize_global_listening_phrases(num_phrases=80)
+        #assistant.start()
     except Exception as e:
         print(e)
     except KeyboardInterrupt:
