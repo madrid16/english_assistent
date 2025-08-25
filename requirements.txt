@@ -8,3 +8,4 @@ playsound
 google-cloud-firestore
 google-cloud-texttospeech
 python-dotenv
+firebase_admin

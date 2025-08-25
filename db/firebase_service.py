@@ -1,6 +1,8 @@
 # /db/firebase_service.py
-from firebase_db import db
+from db.firebase_db import FirebaseDB
 from datetime import datetime
+
+db = FirebaseDB()
 
 class FirebaseService:
     def __init__(self, users_collection: str = "users", sessions_collection: str = "sessions"):

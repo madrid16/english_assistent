@@ -61,24 +61,24 @@ def process_audio_stream(user_id="usuario_demo"):
             feedback = pronunciation_eval.evaluate(user_input, pending_target)
             print(f"📊 Feedback pronunciación: {feedback}")
             pending_target = None  # limpiar después de evaluar
+            firebase.save_user_progress(
+                usuario_id=user_id,
+                texto_usuario=user_input,
+                respuesta_asistente=respuesta,
+                frases_objetivo=pending_target,
+                feedback=feedback
+            )
         else:
             # 1. Respuesta del diálogo con GPT
             # 🔹 Nuevo turno: generar respuesta de GPT
-            respuesta, frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
-
-        # 3. Guardar en Firebase
-        firebase.save_user_progress(
-            usuario_id=user_id,
-            texto_usuario=user_input,
-            respuesta_asistente=respuesta,
-            frases_objetivo=frase_objetivo,
-            feedback=feedback
-        )
+            respuesta, nueva_frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
+            # Solo asignar frase objetivo si realmente es práctica
+            if nueva_frase_objetivo:
+                pending_target = nueva_frase_objetivo
 
         # 4. Reproducir respuesta por TTS
         tts.speak(respuesta)
         # Guardamos la frase objetivo para el próximo turno
-        pending_target = frase_objetivo
 
     # 🔹 Inicia STT con callbacks
     print("🎙️ Asistente escuchando. Di 'salir' para terminar.")

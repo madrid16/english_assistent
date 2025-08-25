@@ -22,20 +22,17 @@ class DialogManager:
         keywords_expansion = ["explica", "explícame", "detallado", "dame un ejemplo", "más detalle", "más largo"]
         breve = not any(kw in user_input.lower() for kw in keywords_expansion)
 
-        if breve:
-            system_prompt = (
-                f"Eres un asistente de inglés. Da respuestas claras y breves (máx. 40 palabras). "
-                f"Usa vocabulario adecuado al nivel A2-B1. "
-                f"Además, siempre proporciona una frase corta en inglés para que el usuario practique pronunciación. "
-                f"Responde en JSON con dos claves: 'reply' y 'frase_objetivo'."
-            )
-        else:
-            system_prompt = (
-                f"Eres un asistente de inglés que da explicaciones completas, con ejemplos y correcciones detalladas "
-                f"cuando el usuario pide más información. "
-                f"Además, siempre proporciona una frase corta en inglés para que el usuario practique pronunciación. "
-                f"Responde en JSON con dos claves: 'reply' y 'frase_objetivo'."
-            )
+        # Sistema prompt para GPT
+        system_prompt = (
+            "Eres un asistente de inglés. Da respuestas claras y breves (máx. 40 palabras) "
+            "Usa vocabulario adecuado al nivel A2-B1. "
+            "Si la frase del usuario es útil para práctica, devuelve una frase objetivo en inglés. "
+            "Responde en JSON con 'reply' y opcional 'frase_objetivo'."
+        ) if breve else (
+            "Eres un asistente de inglés que da explicaciones completas con ejemplos. "
+            "Si la frase del usuario es útil para práctica, devuelve una frase objetivo en inglés. "
+            "Responde en JSON con 'reply' y opcional 'frase_objetivo'."
+        )
 
         self.context.append({"role": "user", "content": user_input})
 
@@ -52,7 +49,7 @@ class DialogManager:
         try:
             data = json.loads(raw_reply)
             reply = data.get("reply", "").strip()
-            frase_objetivo = data.get("frase_objetivo", "").strip()
+            frase_objetivo = data.get("frase_objetivo", "").strip() or None
         except Exception:
             # fallback si el modelo no devuelve JSON válido
             reply = raw_reply
