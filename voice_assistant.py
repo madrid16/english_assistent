@@ -13,7 +13,7 @@ class VoiceAssistant:
         self.keywords_expansion = keywords_expansion
 
         # Inicializa componentes
-        self.stt = SpeechRecognizer(language_code="en-US", rate=16000, chunk_duration_ms=100)
+        self.stt = SpeechRecognizer(language_code=language_code, rate=16000, chunk_duration_ms=100)
         self.tts = ElevenLabsTTS()
         self.dialog_manager = DialogManager()
 

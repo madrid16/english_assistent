@@ -22,7 +22,7 @@ CHUNK = int(RATE / 10)  # 100ms
 audio_utils = AudioUtils(rate=RATE, chunk=CHUNK)
 
 assistant = VoiceAssistant(
-    language_code="en-US",
+    language_code="es-419",
     vad_aggressiveness=2,
 )
 

@@ -1,15 +1,16 @@
+import json
 import openai
+import re
 from config import OPENAI_API_KEY
 
 class DialogManager:
-    def __init__(self, model="gpt-4o-mini", language="en"):
+    def __init__(self, model="gpt-4o-mini"):
         """
         model: Modelo de OpenAI a utilizar (gpt-4o, gpt-4o-mini, gpt-5, etc.)
         language: Idioma principal de la conversación
         """
         openai.api_key = OPENAI_API_KEY
         self.model = model
-        self.language = language
         self.context = []
 
     def generate_response(self, user_input):
@@ -24,13 +25,13 @@ class DialogManager:
 
         # Sistema prompt para GPT
         system_prompt = (
-            "Eres un asistente de inglés. Da respuestas claras y breves (máx. 40 palabras). "
+            "Eres un asistente de inglés y español. Da respuestas claras y breves (máx. 40 palabras). "
             "Usa vocabulario adecuado al nivel A2-B1. "
             "Genera una frase objetivo en inglés solo si la frase del usuario es educativa, práctica o un ejemplo útil. "
             "No generes frase objetivo para saludos, despedidas o frases muy cortas. "
             "Responde siempre en JSON con 'reply' y opcional 'frase_objetivo'."
         ) if breve else (
-            "Eres un asistente de inglés que da explicaciones completas con ejemplos. "
+            "Eres un asistente de inglés y español que da explicaciones completas con ejemplos. "
             "Genera una frase objetivo en inglés solo si la frase del usuario es educativa, práctica o un ejemplo útil. "
             "No generes frase objetivo para saludos, despedidas o frases muy cortas. "
             "Responde siempre en JSON con 'reply' y opcional 'frase_objetivo'."
@@ -45,16 +46,17 @@ class DialogManager:
         )
 
         raw_reply = response.choices[0].message.content.strip()
+        # Limpiar posibles bloques de código ```json ... ```
+        raw_reply_clean = re.sub(r"^```json\s*|\s*```$", "", raw_reply, flags=re.IGNORECASE)
 
         # Intentamos parsear JSON
-        import json
         try:
-            data = json.loads(raw_reply)
+            data = json.loads(raw_reply_clean)
             reply = data.get("reply", "").strip()
             frase_objetivo = data.get("frase_objetivo", "").strip() or None
         except Exception:
             # fallback si el modelo no devuelve JSON válido
-            reply = raw_reply
+            reply = raw_reply_clean
             frase_objetivo = reply.split(".")[0]  # tomar primera frase como target
 
         # Chequeo de longitud
@@ -74,7 +76,7 @@ class DialogManager:
         Extrae frases cortas del contexto para practicar pronunciación.
         """
         prompt = f"""
-        Extrae {num_phrases} frases clave en {self.language} del siguiente texto para que el usuario las practique:
+        Extrae {num_phrases} frases clave en EN del siguiente texto para que el usuario las practique:
         Texto: "{user_input}"
         Responde solo con una lista, sin explicación.
         """
