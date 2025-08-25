@@ -6,12 +6,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Si usas TensorFlow en algún lado
 import signal
 import sys
 
-from stt.speech_recognition import SpeechRecognizer
-from tts.eleven_tts import ElevenLabsTTS
-from npl.dialog_manager import DialogManager
-from npl.pronunciation import PronunciationEvaluator
 from utils.audio_utils import AudioUtils
-from db.firebase_service import FirebaseService
 from voice_assistant import VoiceAssistant
 
 # =========================
@@ -25,11 +20,6 @@ CHUNK = int(RATE / 10)  # 100ms
 # INSTANCIAS DE MÓDULOS
 # =========================
 audio_utils = AudioUtils(rate=RATE, chunk=CHUNK)
-stt = SpeechRecognizer(language_code="en-US", vad_aggressiveness=2)
-tts = ElevenLabsTTS()
-dialog_manager = DialogManager()
-pronunciation_eval = PronunciationEvaluator()
-firebase = FirebaseService()
 
 assistant = VoiceAssistant(
     language_code="en-US",

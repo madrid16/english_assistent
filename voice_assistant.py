@@ -1,6 +1,5 @@
 import threading
 import queue
-import time
 
 from stt.speech_recognition import SpeechRecognizer
 from tts.eleven_tts import ElevenLabsTTS
@@ -13,7 +12,7 @@ class VoiceAssistant:
         self.keywords_expansion = keywords_expansion
 
         # Inicializa componentes
-        self.stt = SpeechRecognizer(language_code=self.language_code, vad_aggressiveness=vad_aggressiveness)
+        self.stt = SpeechRecognizer(language_code="en-US", rate=16000, chunk_duration_ms=100)
         self.tts = ElevenLabsTTS()
         self.dialog_manager = DialogManager()
 
