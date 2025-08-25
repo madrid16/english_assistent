@@ -22,10 +22,10 @@ class SpeechRecognizer:
     def start(self, callback):
         """Inicia captura de audio y reconocimiento en streaming."""
         self.callback = callback
-        self.running = True
+        #self.running = True
 
-        threading.Thread(target=self._capture_audio).start()
-        threading.Thread(target=self._streaming_recognition).start()
+        #threading.Thread(target=self._capture_audio).start()
+        #threading.Thread(target=self._streaming_recognition).start()
         print("🎙️ SpeechRecognizer: iniciando captura de audio... (interim results ON)")
 
     def stop(self):
@@ -35,7 +35,7 @@ class SpeechRecognizer:
 
     def _capture_audio(self):
         """Captura audio del micrófono con sounddevice y lo pone en la cola."""
-
+        print(f" 🎧 Captura de audio iniciada...")
         def callback(indata, frames, time, status):
             if not self.running:
                 raise sd.CallbackStop()
@@ -44,6 +44,7 @@ class SpeechRecognizer:
         with sd.InputStream(channels=1, samplerate=self.rate, callback=callback,
                             blocksize=self.chunk_size, dtype='int16'):
             while self.running:
+                #print("...capturando audio")
                 sd.sleep(100)  # Bloqueo activo
 
 

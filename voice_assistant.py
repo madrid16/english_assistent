@@ -1,5 +1,6 @@
 import threading
 import queue
+import time
 
 from stt.speech_recognition import SpeechRecognizer
 from tts.eleven_tts import ElevenLabsTTS
@@ -30,15 +31,20 @@ class VoiceAssistant:
         """Inicia el asistente de voz"""
         print("🔊 Iniciando asistente de voz...")
         self.running = True
+        self.stt.running = True
 
         # Hilo para procesar respuestas y hablar
         threading.Thread(target=self._process_responses).start()
-
         # Hilos para STT
         self.capture_thread = threading.Thread(target=self.stt._capture_audio)
         self.recognition_thread = threading.Thread(target=self.stt._streaming_recognition)
         self.capture_thread.start()
         self.recognition_thread.start()
+        try:
+            while self.running:
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            self.stop()
 
     def stop(self):
         """Detiene el asistente"""
