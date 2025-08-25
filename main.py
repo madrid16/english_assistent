@@ -12,12 +12,12 @@ from npl.dialog_manager import DialogManager
 from npl.pronunciation import PronunciationEvaluator
 from utils.audio_utils import AudioUtils
 from db.firebase_service import FirebaseService
+from voice_assistant import VoiceAssistant
 
 # =========================
 # CONFIGURACIÓN GLOBAL
 # =========================
 RATE = 16000
-CHUNK = 1024
 CHANNELS = 1
 CHUNK = int(RATE / 10)  # 100ms
 
@@ -30,67 +30,15 @@ tts = ElevenLabsTTS()
 dialog_manager = DialogManager()
 pronunciation_eval = PronunciationEvaluator()
 firebase = FirebaseService()
-is_running = True
-pending_target = None  # frase que el usuario debe practicar
 
-# =========================
-# PROCESAMIENTO DE AUDIO EN TIEMPO REAL
-# =========================
-def process_audio_stream(user_id="usuario_demo"):
-    """
-    Captura audio en tiempo real, lo envía a Google STT,
-    procesa la respuesta con GPT, evalúa pronunciación,
-    da feedback y guarda todo en Firebase.
-    """
-
-    def on_final_transcription(text):
-        """Callback cuando se detecta una frase completa."""
-        global pending_target
-        user_input = text.strip()
-        print(f"\n👤 Usuario: {user_input}")
-
-        if user_input.lower() == "salir":
-            global is_running
-            is_running = False
-            stt.stop_streaming()
-            return
-        
-        if pending_target:
-            # 2. Evaluación de pronunciación (comparando con la frase objetivo)
-            # 🔹 Ahora sí: evaluar pronunciación contra la frase pendiente
-            feedback = pronunciation_eval.evaluate(user_input, pending_target)
-            print(f"📊 Feedback pronunciación: {feedback}")
-            pending_target = None  # limpiar después de evaluar
-            firebase.save_user_progress(
-                usuario_id=user_id,
-                texto_usuario=user_input,
-                respuesta_asistente=respuesta,
-                frases_objetivo=pending_target,
-                feedback=feedback
-            )
-        else:
-            # 1. Respuesta del diálogo con GPT
-            # 🔹 Nuevo turno: generar respuesta de GPT
-            respuesta, nueva_frase_objetivo, es_larga = dialog_manager.generate_response(user_input)
-            # Solo asignar frase objetivo si realmente es práctica
-            if nueva_frase_objetivo:
-                pending_target = nueva_frase_objetivo
-
-        # 4. Reproducir respuesta por TTS
-        tts.speak(respuesta)
-        # Guardamos la frase objetivo para el próximo turno
-
-    # 🔹 Inicia STT con callbacks
-    print("🎙️ Asistente escuchando. Di 'salir' para terminar.")
-    try:
-        stt.audio_utils.start_recording()
-        stt.start_streaming(
-            on_update=lambda x: print(f"⏳ {x}", end="\r"),
-            on_final=on_final_transcription,
-            single_utterance=False,  # mantiene una sesión continua
-        )
-    finally:
-        stt.stop_streaming()
+assistant = VoiceAssistant(
+    stt=stt,
+    tts=tts,
+    dialog_manager=dialog_manager,
+    pronunciation_eval=pronunciation_eval,
+    firebase_service=firebase,
+    user_id="usuario_demo"
+)
 
 # =========================
 # MANEJO DE CTRL+C
@@ -108,10 +56,9 @@ signal.signal(signal.SIGINT, signal_handler)
 # MAIN LOOP
 # =========================
 def main():
-    global is_running
     print("Micrófono encendido. Presiona Ctrl+C para salir.")
     try:
-        process_audio_stream()
+        assistant.start()
     except KeyboardInterrupt:
         pass
     finally:
