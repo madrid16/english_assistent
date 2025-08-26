@@ -7,6 +7,7 @@ from tts.eleven_tts import ElevenLabsTTS
 from npl.dialog_manager import DialogManager
 from npl.listening_test import ListeningTest
 from services.initial_test.initial_test_flow import InitialTestFlow
+from npl.gpt_client import GPTClient
 
 
 class VoiceAssistant:
@@ -20,7 +21,7 @@ class VoiceAssistant:
         self.dialog_manager = DialogManager()
 
         self.listening_test = ListeningTest(tts=self.tts, stt=self.stt, firestore=firestore)
-        self.initial_test = InitialTestFlow(firestore, firestore)
+        self.initial_test = InitialTestFlow(firestore, self.tts, self.stt, GPTClient())
 
         # Control de ejecución
         self.response_queue = queue.Queue()

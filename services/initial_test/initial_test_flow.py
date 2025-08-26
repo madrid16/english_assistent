@@ -1,7 +1,12 @@
+from services.initial_test.listening_service import ListeningService
+
 class InitialTestFlow:
-    def __init__(self, firestore_db, gpt_client):
+    def __init__(self, firestore_db, tts, stt, gpt_client):
         self.firestore = firestore_db
         self.gpt = gpt_client
+        self.tts = tts
+        self.stt = stt
+        self.listening_test = ListeningService(self.firestore, self.tts, self.stt, self.gpt)
 
     def show_welcome(self):
         """

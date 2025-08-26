@@ -67,33 +67,37 @@ class ListeningTest:
     # -----------------------------
     # Métodos públicos
     # -----------------------------
-    def start_test(self, sentence: str):
-        """
-        Ejecuta la prueba de listening:
-        1. Indica al usuario la frase a repetir
-        2. Captura la respuesta de voz
-        3. Evalúa la pronunciación y exactitud con GPT
-        """
-        # 1️⃣ Dar instrucciones
-        instructions = f"Listen carefully and repeat the following sentence: '{sentence}'"
-        print("📢 Instrucciones (Listening):", instructions)
-        self.tts.speak(instructions)
+    def run_test(self, listening_items: list):
+        results = []
+        for item in listening_items:
+            sentence = item.get("text_audio", "")
+            if not sentence:
+                continue
+            # 1️⃣ Dar instrucciones
+            instructions = f"Listen carefully and repeat the following sentence: '{sentence}'"
+            print("📢 Instrucciones (Listening):", instructions)
+            self.tts.speak(instructions)
 
-        # 2️⃣ Capturar la respuesta del usuario
-        print("🎤 Tu turno...")
-        user_response = self.wait_for_final_transcript_once()
-        print("✅ Usuario (final):", user_response)
+            # 2️⃣ Capturar la respuesta del usuario
+            print("🎤 Tu turno...")
+            user_response = self.wait_for_final_transcript_once()
+            print("✅ Usuario (final):", user_response)
 
-        # 3️⃣ Evaluar con GPT
-        prompt = (
-            f"{EVAL_SYSTEM_PROMPT}\nFrase objetivo: '{sentence}'\n"
-            f"Respuesta del usuario: '{user_response}'"
-        )
-        evaluation_json = self.generate_response(prompt)
-        feedback, score = self.clean_json_block(evaluation_json)
-        self.result = {"feedback": feedback, "score": score}
-        print("📝 Evaluación Listening:", self.result)
+            # 3️⃣ Evaluar con GPT
+            prompt = (
+                f"{EVAL_SYSTEM_PROMPT}\nFrase objetivo: '{sentence}'\n"
+                f"Respuesta del usuario: '{user_response}'"
+            )
+            evaluation_json = self.generate_response(prompt)
+            feedback, score = self.clean_json_block(evaluation_json)
+
+            result = {"sentence": sentence, "user_response": user_response, "feedback": feedback, "score": score}
+            results.append(result)
+            print("📝 Evaluación Listening:", result)
+
+        self.result = results
         return self.result
+
     
     def generate_response(self, prompt):
         # Ajusta aquí la llamada según tu cliente (OpenAI/Responses/Chat completions)
@@ -141,13 +145,6 @@ class ListeningTest:
             print("⚠️ Error al parsear JSON:", e)
         # fallback
         return raw_text, 0
-
-    def get_random_listening_phrases(self, n=8):
-        all_phrases = self.firestore.get_listening_phrases()
-        if len(all_phrases) < n:
-            raise ValueError(f"No hay suficientes frases en Firestore ({len(all_phrases)})")
-        return random.sample(all_phrases, n)
-
 
 # -----------------------------
 # Ejemplo de prueba

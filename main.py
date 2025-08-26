@@ -26,7 +26,6 @@ CHUNK = int(RATE / 10)  # 100ms
 audio_utils = AudioUtils(rate=RATE, chunk=CHUNK)
 firestore = FirebaseDB()
 gpt = GPTClient()
-test = InitialTestFlow(firestore, gpt)
 
 assistant = VoiceAssistant(
     language_code="es-419",
@@ -55,7 +54,6 @@ def main():
         firebase_service.initialize_global_listening_phrases(num_phrases=80)
         # print(firestore.get_listening_phrases(8))
         assistant.start()
-        test.show_welcome()
 
     except Exception as e:
         print(e)
