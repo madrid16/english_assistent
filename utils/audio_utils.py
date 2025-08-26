@@ -1,6 +1,6 @@
 import numpy as np
 import sounddevice as sd
-from utils.shared_queue import audio_queue  # usamos la cola global
+from utils.shared_queue import SharedQueue  # usamos la cola global
 
 class AudioUtils:
     def __init__(self, rate=16000, chunk=1024, channels=1):
@@ -14,6 +14,7 @@ class AudioUtils:
         self.chunk = chunk
         self.channels = channels
         self.stream = None
+        self.queue = SharedQueue.response_queue
 
     def _callback(self, indata, frames, time, status):
         """Callback de sounddevice que guarda el audio en la cola"""
@@ -21,7 +22,7 @@ class AudioUtils:
             print(f"⚠️ Status de audio: {status}")
         # Convertir a PCM16 y encolar
         audio_data = (indata * 32767).astype(np.int16).tobytes()
-        audio_queue.put(audio_data)
+        self.queue.put(audio_data)
 
     def start_recording(self):
         """Inicia grabación en segundo plano con callback"""
@@ -48,7 +49,7 @@ class AudioUtils:
         try:
             data = self.q.get(timeout=1)
             return data.flatten()  # numpy array
-        except queue.Empty:
+        except self.queue.Empty:
             return None
 
     def record_seconds(self, seconds=3):

@@ -1,5 +1,5 @@
-import threading
 import queue
+import threading
 import time
 
 from stt.speech_recognition import SpeechRecognizer
@@ -8,6 +8,7 @@ from npl.dialog_manager import DialogManager
 from npl.listening_test import ListeningTest
 from services.initial_test.initial_test_flow import InitialTestFlow
 from npl.gpt_client import GPTClient
+from utils.shared_queue import SharedQueue
 
 
 class VoiceAssistant:
@@ -24,7 +25,7 @@ class VoiceAssistant:
         self.initial_test = InitialTestFlow(firestore, self.tts, self.stt, GPTClient())
 
         # Control de ejecución
-        self.response_queue = queue.Queue()
+        self.response_queue = SharedQueue.response_queue
         self.speaking = False
         self.running = False
         self.stt.callback = self.on_user_speech
