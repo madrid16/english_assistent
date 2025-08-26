@@ -1,5 +1,6 @@
-import os
 import hashlib
+import os
+import re
 from elevenlabs.client import ElevenLabs
 from elevenlabs import play
 from config import ELEVEN_API_KEY
@@ -30,12 +31,21 @@ class ElevenLabsTTS:
             for chunk in response:
                 f.write(chunk)
         return output_file
+    
+    def normalize_text(self, text: str) -> str:
+        # 1. Quitar espacios al inicio y final
+        text = text.strip()
+        # 2. Convertir saltos de línea y tabs a espacio
+        text = re.sub(r"\s+", " ", text)
+        # 3. Opcional: pasar todo a minúsculas si quieres unificar cache sin importar mayúsculas
+        text = text.lower()
+        return text
 
     def speak(self, text):
         if not text.strip():
             return
-        
-        cache_file = self._get_cache_path(text)
+        normalized_text = self.normalize_text(text)
+        cache_file = self._get_cache_path(normalized_text)
         # Si ya existe en caché, reproducimos directamente
         if os.path.exists(cache_file):
             print(f"Archivo en cache {cache_file}")
@@ -48,7 +58,7 @@ class ElevenLabsTTS:
         
         audio = self.client.text_to_speech.convert(
             voice_id=self.voice_id,
-            text=text,
+            text=normalized_text,
             model_id=self.model_id,
             output_format=self.output_format
         )
