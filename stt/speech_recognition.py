@@ -17,7 +17,9 @@ class SpeechRecognizer:
 
         self.audio_queue = queue.Queue()
         self.running = False
+        self.speaking = False
         self.callback = None
+        self.pause_processing = False
 
     def start(self, callback):
         """Inicia captura de audio y reconocimiento en streaming."""
@@ -39,21 +41,32 @@ class SpeechRecognizer:
         def callback(indata, frames, time, status):
             if not self.running:
                 raise sd.CallbackStop()
+
             self.audio_queue.put(indata.tobytes())
 
         with sd.InputStream(channels=1, samplerate=self.rate, callback=callback,
                             blocksize=self.chunk_size, dtype='int16'):
             while self.running:
                 #print("...capturando audio")
-                sd.sleep(100)  # Bloqueo activo
-
+                sd.sleep(50)  # Bloqueo activo
 
     def _audio_generator(self):
         """Generador que produce chunks de audio para Google STT."""
+        silence_chunk = b"\x00" * self.chunk_size * 2  # 2 bytes por sample para int16
         while self.running:
-            chunk = self.audio_queue.get()
+            try:
+                chunk = self.audio_queue.get(timeout=0.1)
+            except queue.Empty:
+                chunk = None
+
+            if getattr(self, "pause_processing", False):
+                # Enviar silencio mientras TTS está hablando
+                yield speech.StreamingRecognizeRequest(audio_content=silence_chunk)
+                continue
+
             if chunk is None:
-                return
+                continue
+
             yield speech.StreamingRecognizeRequest(audio_content=chunk)
 
     def _streaming_recognition(self):
@@ -91,10 +104,16 @@ class SpeechRecognizer:
                 print(f"\n⚠️ Error en streaming STT: {e}")
     
     def pause(self):
+        """Pausa la captura de audio."""
         self.running = False
+        if hasattr(self, "_capture_thread") and self._capture_thread.is_alive():
+            self._capture_thread.join(timeout=0.5)  # esperar a que termine el hilo
 
     def resume(self):
         if not self.running:
             self.running = True
-            threading.Thread(target=self._capture_audio, daemon=True).start()
+            if not hasattr(self, "_stt_thread") or not self._stt_thread.is_alive():
+                self._stt_thread = threading.Thread(target=self._capture_audio, daemon=True)
+                self._stt_thread.start()
+
 

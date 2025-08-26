@@ -110,12 +110,13 @@ class VoiceAssistant:
         """
         if self.speaking:
             return
-
         self.speaking = True
         # Pausar STT
-        self.stt.pause()
+        self.stt.pause_processing = True
         print(f"🤖 Asistente: {text}")
         self.tts.speak(text)
+        # Pequeño buffer para asegurar que el STT reciba audio después
+        time.sleep(0.1)
         # Reanudar STT
-        self.stt.resume()
+        self.stt.pause_processing = False
         self.speaking = False
