@@ -6,6 +6,7 @@ from stt.speech_recognition import SpeechRecognizer
 from tts.eleven_tts import ElevenLabsTTS
 from npl.dialog_manager import DialogManager
 from npl.listening_test import ListeningTest
+from services.initial_test.initial_test_flow import InitialTestFlow
 
 
 class VoiceAssistant:
@@ -19,6 +20,7 @@ class VoiceAssistant:
         self.dialog_manager = DialogManager()
 
         self.listening_test = ListeningTest(tts=self.tts, stt=self.stt, firestore=firestore)
+        self.initial_test = InitialTestFlow(firestore, firestore)
 
         # Control de ejecución
         self.response_queue = queue.Queue()
@@ -74,13 +76,9 @@ class VoiceAssistant:
             self.stop()
             return
         
-        if text == "start listening test" or "empezar test inicial":
+        if text in ("start listening test" , "empezar test inicial", "prueba inicial"):
             print("Iniciando prueba de listening...")
-            evaluation = self.listening_test.start_test(
-                user_id="usuario123",
-                listening_items=mi_lista_de_items
-            )
-            print("Evaluación:", evaluation)
+            self.response_queue.put(self.initial_test.show_welcome())
             return
 
         # Obtiene respuesta del diálogo

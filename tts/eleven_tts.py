@@ -2,7 +2,6 @@ import os
 import hashlib
 from elevenlabs.client import ElevenLabs
 from elevenlabs import play
-from elevenlabs import save as save_audio
 from config import ELEVEN_API_KEY
 
 CACHE_DIR = "tts_cache"
@@ -41,10 +40,8 @@ class ElevenLabsTTS:
         if os.path.exists(cache_file):
             print(f"Archivo en cache {cache_file}")
             try:
-                print(f"🔊 Reproduciendo desde caché: {text}")
-                with open(cache_file, "rb") as f:
-                    audio_bytes = f.read()
-                play(audio_bytes)
+                print(f"🔊 Reproduciendo desde caché")
+                play(self.open_audio(cache_file))
                 return
             except Exception:
                 print("⚠️ Error al reproducir desde caché, regenerando audio...")
@@ -55,21 +52,18 @@ class ElevenLabsTTS:
             model_id=self.model_id,
             output_format=self.output_format
         )
-        play(audio)
-        # Guardar audio en caché
+        # 2. Guardar a cache como bytes
+        self.save_audio(cache_file, audio)
+        
+        # 3. Reproducir desde cache
+        play(self.open_audio(cache_file))
+
+    def save_audio(self, cache_file, audio):
         with open(cache_file, "wb") as f:
             for chunk in audio:
                 f.write(chunk)
-        # Reproducir directamente
 
-    def save(self, text, filename):
-        audio = self.client.text_to_speech.convert(
-            voice_id=self.voice_id,
-            text=text,
-            model_id=self.model_id,
-            output_format=self.output_format
-        )
-        with open(filename, "wb") as f:
-            for chunk in audio:
-                f.write(chunk)
-        return filename
+    def open_audio(self, cache_file):
+        with open(cache_file, "rb") as f:
+            audio_bytes = f.read()
+        return audio_bytes

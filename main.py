@@ -11,6 +11,7 @@ from voice_assistant import VoiceAssistant
 from db.firebase_db import FirebaseDB
 from db.firebase_service import FirebaseService
 from npl.gpt_client import GPTClient
+from services.initial_test.initial_test_flow import InitialTestFlow
 
 # =========================
 # CONFIGURACIÓN GLOBAL
@@ -25,6 +26,7 @@ CHUNK = int(RATE / 10)  # 100ms
 audio_utils = AudioUtils(rate=RATE, chunk=CHUNK)
 firestore = FirebaseDB()
 gpt = GPTClient()
+test = InitialTestFlow(firestore, gpt)
 
 assistant = VoiceAssistant(
     language_code="es-419",
@@ -51,8 +53,10 @@ def main():
     try:
         firebase_service = FirebaseService(db_client=firestore.db, gpt_client=gpt)
         firebase_service.initialize_global_listening_phrases(num_phrases=80)
-        print(firestore.get_listening_phrases(8))
-        #assistant.start()
+        # print(firestore.get_listening_phrases(8))
+        assistant.start()
+        test.show_welcome()
+
     except Exception as e:
         print(e)
     except KeyboardInterrupt:
